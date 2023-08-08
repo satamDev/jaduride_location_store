@@ -960,7 +960,7 @@ let nearByDrivers = [
 ]
 
 nearByDrivers.forEach((item, index) => {
-	driverData[item.id] = [item.lat, item.lng]
+	driverData[`'${item.id}'`] = [item.lat, item.lng]
 })
 
 app.get('/', (req, res) => {
