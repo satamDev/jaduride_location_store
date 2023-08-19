@@ -110,3 +110,8 @@ app.get('/placeApiCallingCounter', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+// &strictbounds=true
+// &types=geocode
+// &location=${location.lat},${location.lng}
+// &radius=10
+// &components=country:ind
