@@ -83,7 +83,7 @@ app.get(`/place/details`, async (req, res) => {
 			place_id=${place_id}
 			&key=${apiKey}
 			&sessiontoken=${sessiontoken}
-			&fields=geometry/location`
+			&fields=geometry/location,formatted_address`
 		)
 		console.log(response.data);
 		res.status(200).json(
@@ -91,6 +91,38 @@ app.get(`/place/details`, async (req, res) => {
 				status : true,
 				message : "Searching details data execution complete",
 				details : response.data
+			}
+		)
+	} catch (error) {
+		console.log(error);
+		res.status(500).json(
+			{ 
+				error: 'An error occurred' 
+			}
+		)
+	}
+});
+
+app.get(`/geocode/json`, async (req, res) => {
+	console.log(req.query);
+	const place_id = req.query.placeId
+	const userId = req.query.userId;	
+	const lat = req.query.lat;
+	const lng = req.query.lng;
+
+	logger.info(`api : ${googlePlaceApis.details}, userId : ${userId}, searchedText : ${place_id}`)
+	
+	try {
+		let url = `https://maps.googleapis.com/maps/api/geocode/json?key=${apiKey}`
+		url += ( place_id != '') ? `&place_id=${place_id}` : `&latlng=${lat},${lng}`;
+
+		const response = await axios.get(url)
+		console.log(response.data);
+		res.status(200).json(
+			{
+				status : true,
+				message : "Searching details data execution complete",
+				geocodingResponse : response.data
 			}
 		)
 	} catch (error) {

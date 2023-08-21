@@ -14,21 +14,22 @@
 			var input = document.getElementById('searchTextField');
 			const center = { lat: 22.648284194012913, lng: 88.34168511533134 };
 			// Create a bounding box with sides ~10km away from the center point
-			const defaultBounds = {
-				north: center.lat + 0.01,
-				south: center.lat - 0.01,
-				east: center.lng + 0.01,
-				west: center.lng - 0.01,
-			};
+			// const defaultBounds = {
+			// 	north: center.lat + 0.01,
+			// 	south: center.lat - 0.01,
+			// 	east: center.lng + 0.01,
+			// 	west: center.lng - 0.01,
+			// };
 			const options = {
-				bounds: defaultBounds,
+				// bounds: defaultBounds,
 				componentRestrictions: { country: "ind" },
-				fields: ["address_components", "geometry", "icon", "name"],
-				strictBounds: true,
+				// fields: ["address_components", "geometry", "icon", "name"],
+				// strictBounds: true,
 				types: ['geocode']
 			};
 
 			var autocomplete = new google.maps.places.Autocomplete(input, options)
+			console.log(autocomplete);
 			google.maps.event.addListener(autocomplete, 'place_changed', function () {
 				var place = autocomplete.getPlace();
 				document.getElementById('searchTextField').value = place.name;
