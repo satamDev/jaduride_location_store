@@ -49,7 +49,8 @@ app.get(`/search/places`, async (req, res) => {
 			&key=${apiKey}
 			&location=${lat},${lng}
 			&sessiontoken=${sessiontoken}
-			&radius=${searchingRadius}
+			&radius=${searchingRadius},
+			&strictbounds=true
 			&components=country:ind`
 		)
 		res.status(200).json(
