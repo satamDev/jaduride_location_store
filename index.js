@@ -50,7 +50,7 @@ app.get(`/search/places`, async (req, res) => {
 			&location=${lat},${lng}
 			&sessiontoken=${sessiontoken}
 			&radius=${searchingRadius},
-			&strictbounds=true
+			&strictbounds=true,
 			&components=country:ind`
 		)
 		res.status(200).json(
