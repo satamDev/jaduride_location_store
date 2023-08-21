@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Hello, world!</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+		crossorigin="anonymous">
+	<script type="text/javascript"
+		src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&libraries=places"></script>
+	<script>
+		var autocompleteService, placesService, results, map;
+		var currentSearchFieldId = "";
+
+		// var origin = {}, waypoints = {}, description = {};
+
+		var qs = (function (a) {
+			if (a == "") return {};
+			var b = {};
+			for (var i = 0; i < a.length; ++i) {
+				var p = a[i].split('=', 2);
+				if (p.length == 1)
+					b[p[0]] = "";
+				else
+					b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, " "));
+			}
+			return b;
+		})(window.location.search.substr(1).split('&'));
+
+		var currentLat = qs['currentLat'], currentLng = qs['currentLng'];
+
+		function initialize() {
+			var origin = document.getElementById('searchTextFieldOrigin');
+			var destination = document.getElementById('searchTextFieldDestination');
+
+			results = document.getElementById('results');
+
+			var mapOptions = {
+				zoom: 16,
+				center: new google.maps.LatLng(currentLat, currentLng)
+			};
+
+			map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
+
+			let marker = new google.maps.Marker({
+				position: map.getCenter(),
+				map: map,
+				draggable: false
+			});
+
+			google.maps.event.addDomListener(origin, 'input', function () {
+				results.style.display = 'block';
+				currentSearchFieldId = origin;
+				getPlacePredictions(origin.value);
+			});
+
+			google.maps.event.addDomListener(destination, 'input', function () {
+				results.style.display = 'block';
+				currentSearchFieldId = destination;
+				getPlacePredictions(destination.value);
+			});
+
+			google.maps.event.addListener(map, 'drag', function () {
+				marker.setPosition(map.getCenter());
+			});
+
+			var geocoder = new google.maps.Geocoder();
+
+			google.maps.event.addListener(map, 'dragend', function () {
+				let latlng = marker.getPosition().toJSON();
+				let address = "";
+
+				geocoder.geocode({
+					'latLng': new google.maps.LatLng(latlng.lat, latlng.lng)
+				}, function (results, status) {
+					if (status == google.maps.GeocoderStatus.OK) {
+						if (results[0]) {
+							address = results[0].formatted_address;
+							console.log(address);
+						}
+					}
+				});
+			});
+
+			autocompleteService = new google.maps.places.AutocompleteService();
+			placesService = new google.maps.places.PlacesService(map);
+		}
+
+		function getPlacePredictions(search) {
+			autocompleteService.getPlacePredictions({
+				input: search,
+				componentRestrictions: { country: "ind" },
+				fields: ["address_components", "geometry", "icon", "name"],
+				types: ['establishment', 'geocode']
+			}, callback);
+		}
+
+		// Get place details
+		function getPlaceDetails(placeId) {
+			var request = {
+				placeId: placeId
+			};
+
+			placesService.getDetails(request, function (place, status) {
+				if (status === google.maps.places.PlacesServiceStatus.OK) {
+					console.log(place.geometry.location.toJSON());
+					currentSearchFieldId.value = place.formatted_address;
+					// Hide autocomplete results
+					results.style.display = 'none';
+				}
+			});
+		}
+
+		// Place search callback
+		function callback(predictions, status) {
+			// Empty results container
+			results.innerHTML = '';
+
+			// Place service status error
+			if (status != google.maps.places.PlacesServiceStatus.OK) {
+				results.innerHTML = `<div class="py-2 border-bottom d-flex gap-2 cursor-pointer">						
+						<div class="">
+							<h5 class="m-0 search-result text-red">Please try again. Status: ${status}</h5>							
+						</div>
+					</div>`
+				return;
+			}
+
+			for (var i = 0, prediction; prediction = predictions[i]; i++) {
+				for (var i = 0, prediction; prediction = predictions[i]; i++) {
+					results.innerHTML += `<div class="py-2 border-bottom d-flex gap-2 cursor-pointer">
+						<span>
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+								xmlns="http://www.w3.org/2000/svg">
+								<circle cx="12" cy="12" r="9" stroke="#000000" stroke-linecap="round"
+									stroke-linejoin="round" stroke-width="2" />
+								<path d="M12 7V10.7639C12 11.5215 12.428 12.214 13.1056 12.5528L16 14"
+									stroke="#F39C04" stroke-linecap="round" stroke-linejoin="round"
+									stroke-width="2" />
+							</svg>
+						</span>
+						<div class="">
+							<h5 class="m-0 search-result" data-placeid="${prediction.place_id}" data-name="${prediction.terms[0].value}">${prediction.description}</h5>
+							<small class="d-block">Location</small>
+						</div>
+					</div>`
+				}
+			}
+
+			var items = document.getElementsByClassName("search-result");
+
+			// Results items click
+			for (var i = 0, item; item = items[i]; i++) {
+				item.onclick = function () {
+					if (this.dataset.placeid) {
+						getPlaceDetails(this.dataset.placeid);
+					}
+				};
+			}
+		}
+
+		google.maps.event.addDomListener(window, 'load', initialize);
+
+		// Fetching current location logic
+		function initGeolocation() {
+			var qs = (function (a) {
+				if (a == "") return {};
+				var b = {};
+				for (var i = 0; i < a.length; ++i) {
+					var p = a[i].split('=', 2);
+					if (p.length == 1)
+						b[p[0]] = "";
+					else
+						b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, " "));
+				}
+				return b;
+			})(window.location.search.substr(1).split('&'));
+
+			let searchTextFieldOrigin = document.getElementById('searchTextFieldOrigin');
+			let searchTextFieldDestination = document.getElementById('searchTextFieldDestination');
+			if (searchTextFieldOrigin.value == "") {
+				searchTextFieldOrigin.value = 'Current Location';
+			} else if (searchTextFieldDestination.value == "" && searchTextFieldOrigin.value != "" && searchTextFieldOrigin.value != 'Current Location') {
+				searchTextFieldDestination.value = 'Current Location'
+			} else {
+				alert('oigin and destination can not your current location')
+			}
+
+			console.log(`${qs['currentLat']}, ${qs['currentLng']}`)
+		}
+	</script>
+	<style>
+		.container {
+			max-width: 767px;
+		}
+
+		body {
+			font-size: 12px;
+		}
+
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6 {
+			font-weight: bold;
+		}
+
+		button {
+			outline: none !important;
+			box-shadow: none !important;
+		}
+
+		header.header {
+			position: sticky;
+			top: 0;
+			left: 0;
+			width: 100%;
+			z-index: 100;
+			background: #fff;
+		}
+
+		.headersearch {
+			background: #f1f1f1;
+			border-radius: 3px;
+			flex-wrap: nowrap;
+			padding-right: 10px;
+		}
+
+		.headersearch .form-control {
+			border: none !important;
+			box-shadow: none !important;
+			outline: none !important;
+			background: #f1f1f1;
+			font-size: 12px;
+			height: 35px;
+		}
+
+		.dualsearch .form-control {
+			border: none !important;
+			box-shadow: none !important;
+			outline: none !important;
+			background: #f1f1f1;
+			font-size: 12px;
+			height: 35px;
+		}
+
+		.searchico {
+			padding: 5px;
+			background: #f1f1f1;
+		}
+
+		.btnico {
+			background: rgba(0, 0, 0, 0) !important;
+		}
+
+		.header-bottom .nav-link.active svg path {
+			stroke: #F39C04;
+			fill: #F39C04;
+		}
+
+		.searchgroup small {
+			color: #999;
+		}
+
+		h5 {
+			font-size: 12px;
+		}
+
+		h4 {
+			font-size: 16px;
+		}
+
+		.markprogres {
+			width: 20px;
+			position: relative;
+		}
+
+		.markprogres .line {
+			height: 100%;
+			width: 2px;
+			background: #ccc;
+		}
+
+		.markprogres:before {
+			content: '';
+			height: 14px;
+			width: 14px;
+			border-radius: 100%;
+			position: absolute;
+			left: -6px;
+			top: 0;
+			border: 2px solid #fff;
+			background: #ccc;
+		}
+
+		.box {
+			position: absolute;
+			left: -5px;
+			height: 12px;
+			width: 12px;
+			bottom: 0;
+			border: 2px solid #fff;
+			background: #222;
+		}
+
+		.searchgroup h5 {
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.cursor-pointer {
+			cursor: pointer;
+		}
+
+		#map-canvas {
+			position: inherit !important;
+		}
+
+		.text-red {
+			color: red;
+		}
+
+		.procplus {
+			position: absolute;
+			left: -9px;
+			bottom: 0;
+			padding: 1px;
+		}
+
+		.boxnumber {
+			height: 18px;
+			min-width: 18px;
+			background: #222;
+			color: #fff;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			position: absolute;
+			left: -9px;
+			top: 50%;
+			font-size: 10px;
+			transform: translateY(-50%);
+		}
+
+		.headersearch svg {
+			cursor: move;
+		}
+
+		.bottomstky {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			width: 100%;
+			background: #fff;
+			z-index: 10;
+		}
+
+		.backsec1 {
+			height: 35px;
+			width: 35px;
+			background: #fff;
+			border-radius: 100%;
+			border: none !important;
+			box-shadow: none !important;
+			outline: none !important;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			position: absolute;
+			left: 15px;
+			top: 15px;
+			z-index: 10;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container p-0">
+		<!-- Srceen 1 -->
+		<div class="screen1">
+			<header class="header px-3 border-bottom">
+				<section class="header-top py-3">
+					<div class="d-flex align-items-center justify-content-between">
+						<button class="btnico border-0 shadow-0 p-0" type="button">
+							<svg fill="#000000" width="20" height="20" viewBox="0 0 52 52" data-name="Layer 1"
+								id="Layer_1" xmlns="http://www.w3.org/2000/svg">
+								<path
+									d="M50,24H6.83L27.41,3.41a2,2,0,0,0,0-2.82,2,2,0,0,0-2.82,0l-24,24a1.79,1.79,0,0,0-.25.31A1.19,1.19,0,0,0,.25,25c0,.07-.07.13-.1.2l-.06.2a.84.84,0,0,0,0,.17,2,2,0,0,0,0,.78.84.84,0,0,0,0,.17l.06.2c0,.07.07.13.1.2a1.19,1.19,0,0,0,.09.15,1.79,1.79,0,0,0,.25.31l24,24a2,2,0,1,0,2.82-2.82L6.83,28H50a2,2,0,0,0,0-4Z" />
+							</svg>
+						</button>
+						<h4>Plan your trip</h4>
+						<div style="width: 20px"></div>
+					</div>
+				</section>
+				<section class="header-bottom pb-2">
+					<div class="d-flex justify-content-center gap-2 pb-3">
+						<div class="markprogres">
+							<div class="line"></div>
+							<div class="box"></div>
+						</div>
+						<!-- <div class="dualsearch w-100">
+							<input type="text" id="searchTextFieldOrigin" class="form-control mb-2 w-100"
+								placeholder="Where From?" autofocus>
+							<input type="text" id="searchTextFieldDestination" class="form-control w-100"
+								placeholder="Where to?">
+						</div> -->
+						<ul class="dualsearch w-100 droppable-area1 m-0 p-0 connected-sortable">
+							<li class="input-group mb-2 headersearch d-flex align-items-center">
+								<input type="text" id="searchTextFieldOrigin" class="form-control w-100" placeholder="Where From?" autofocus>
+								<svg class="curserdrug" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<path d="M5 9H19M5 15H19" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+								</svg>
+							</li>
+							<li class="input-group mb-2 headersearch d-flex align-items-center">
+								<input type="text" id="searchTextFieldDestination" class="form-control w-100" placeholder="Where to?">
+								<svg class="curserdrug" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<path d="M5 9H19M5 15H19" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+								</svg>
+							</li>
+						</ul>
+					<button class="btnico border-0 shadow-0 p-0" type="button" id="addMoreButton">
+						<svg fill="#ccc" width="30" height="30" viewBox="-1.7 0 20.4 20.4"
+							xmlns="http://www.w3.org/2000/svg" class="cf-icon-svg">
+							<path
+								d="M16.416 10.283A7.917 7.917 0 1 1 8.5 2.366a7.916 7.916 0 0 1 7.916 7.917zm-2.958.01a.792.792 0 0 0-.792-.792H9.284V6.12a.792.792 0 1 0-1.583 0V9.5H4.32a.792.792 0 0 0 0 1.584H7.7v3.382a.792.792 0 0 0 1.583 0v-3.382h3.382a.792.792 0 0 0 .792-.791z" />
+						</svg>
+					</button>
+		</div>
+		<ul class="nav nav-pills m-0 justify-content-center justify-content-evenly" id="pills-tab" role="tablist">
+			<li class="nav-item" role="presentation">
+				<button class="nav-link active bg-white py-1" id="pills-home-tab" data-bs-toggle="pill"
+					data-bs-target="#pills-home" type="button" role="tab" aria-controls="pills-home"
+					aria-selected="true">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<path
+							d="M16.6725 16.6412L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z"
+							stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</button>
+			</li>
+			<li class="nav-item" role="presentation">
+				<button class="nav-link bg-white py-1" id="pills-profile-tab" data-bs-toggle="pill"
+					data-bs-target="#pills-profile" type="button" role="tab" aria-controls="pills-profile"
+					aria-selected="false">
+					<svg width="21" height="21" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<path
+							d="M11.2691 4.41115C11.5006 3.89177 11.6164 3.63208 11.7776 3.55211C11.9176 3.48263 12.082 3.48263 12.222 3.55211C12.3832 3.63208 12.499 3.89177 12.7305 4.41115L14.5745 8.54808C14.643 8.70162 14.6772 8.77839 14.7302 8.83718C14.777 8.8892 14.8343 8.93081 14.8982 8.95929C14.9705 8.99149 15.0541 9.00031 15.2213 9.01795L19.7256 9.49336C20.2911 9.55304 20.5738 9.58288 20.6997 9.71147C20.809 9.82316 20.8598 9.97956 20.837 10.1342C20.8108 10.3122 20.5996 10.5025 20.1772 10.8832L16.8125 13.9154C16.6877 14.0279 16.6252 14.0842 16.5857 14.1527C16.5507 14.2134 16.5288 14.2807 16.5215 14.3503C16.5132 14.429 16.5306 14.5112 16.5655 14.6757L17.5053 19.1064C17.6233 19.6627 17.6823 19.9408 17.5989 20.1002C17.5264 20.2388 17.3934 20.3354 17.2393 20.3615C17.0619 20.3915 16.8156 20.2495 16.323 19.9654L12.3995 17.7024C12.2539 17.6184 12.1811 17.5765 12.1037 17.56C12.0352 17.5455 11.9644 17.5455 11.8959 17.56C11.8185 17.5765 11.7457 17.6184 11.6001 17.7024L7.67662 19.9654C7.18404 20.2495 6.93775 20.3915 6.76034 20.3615C6.60623 20.3354 6.47319 20.2388 6.40075 20.1002C6.31736 19.9408 6.37635 19.6627 6.49434 19.1064L7.4341 14.6757C7.46898 14.5112 7.48642 14.429 7.47814 14.3503C7.47081 14.2807 7.44894 14.2134 7.41394 14.1527C7.37439 14.0842 7.31195 14.0279 7.18708 13.9154L3.82246 10.8832C3.40005 10.5025 3.18884 10.3122 3.16258 10.1342C3.13978 9.97956 3.19059 9.82316 3.29993 9.71147C3.42581 9.58288 3.70856 9.55304 4.27406 9.49336L8.77835 9.01795C8.94553 9.00031 9.02911 8.99149 9.10139 8.95929C9.16534 8.93081 9.2226 8.8892 9.26946 8.83718C9.32241 8.77839 9.35663 8.70162 9.42508 8.54808L11.2691 4.41115Z"
+							stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</button>
+			</li>
+			<li class="nav-item" role="presentation">
+				<button class="nav-link bg-white py-1" id="pills-contact-tab" data-bs-toggle="pill"
+					data-bs-target="#pills-contact" type="button" role="tab" aria-controls="pills-contact"
+					aria-selected="false">
+					<svg width="21" height="21" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<path
+							d="M12 21C15.5 17.4 19 14.1764 19 10.2C19 6.22355 15.866 3 12 3C8.13401 3 5 6.22355 5 10.2C5 14.1764 8.5 17.4 12 21Z"
+							stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+						<path
+							d="M12 13C13.6569 13 15 11.6569 15 10C15 8.34315 13.6569 7 12 7C10.3431 7 9 8.34315 9 10C9 11.6569 10.3431 13 12 13Z"
+							stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</button>
+			</li>
+		</ul>
+		</section>
+		</header>
+		<div class="px-3 py-2">
+			<div class="tab-content" id="pills-tabContent">
+				<div class="tab-pane fade show active" id="pills-home" role="tabpanel" aria-labelledby="pills-home-tab">
+					<div class="searchgroup pac-container" id="results">
+
+					</div>
+				</div>
+
+				<div class="tab-pane fade" id="pills-profile" role="tabpanel" aria-labelledby="pills-profile-tab">
+					<div class="searchgroup">
+						<div class="py-2 border-bottom d-flex gap-2">
+							<span>
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+									xmlns="http://www.w3.org/2000/svg">
+									<circle cx="12" cy="12" r="9" stroke="#000000" stroke-linecap="round"
+										stroke-linejoin="round" stroke-width="2" />
+									<path d="M12 7V10.7639C12 11.5215 12.428 12.214 13.1056 12.5528L16 14"
+										stroke="#F39C04" stroke-linecap="round" stroke-linejoin="round"
+										stroke-width="2" />
+								</svg>
+							</span>
+							<div class="">
+								<h5 class="m-0">WORK</h5>
+								<small class="d-block">Location</small>
+							</div>
+						</div>
+						<div class="py-2 border-bottom d-flex gap-2">
+							<span>
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+									xmlns="http://www.w3.org/2000/svg">
+									<circle cx="12" cy="12" r="9" stroke="#000000" stroke-linecap="round"
+										stroke-linejoin="round" stroke-width="2" />
+									<path d="M12 7V10.7639C12 11.5215 12.428 12.214 13.1056 12.5528L16 14"
+										stroke="#F39C04" stroke-linecap="round" stroke-linejoin="round"
+										stroke-width="2" />
+								</svg>
+							</span>
+							<div class="">
+								<h5 class="m-0">HOME</h5>
+								<small class="d-block">Location</small>
+							</div>
+						</div>
+						<div class="py-2 border-bottom d-flex gap-2">
+							<span>
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+									xmlns="http://www.w3.org/2000/svg">
+									<circle cx="12" cy="12" r="9" stroke="#000000" stroke-linecap="round"
+										stroke-linejoin="round" stroke-width="2" />
+									<path d="M12 7V10.7639C12 11.5215 12.428 12.214 13.1056 12.5528L16 14"
+										stroke="#F39C04" stroke-linecap="round" stroke-linejoin="round"
+										stroke-width="2" />
+								</svg>
+							</span>
+							<div class="">
+								<h5 class="m-0">Netaji subhas chandra bose</h5>
+								<small class="d-block">Location</small>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="tab-pane fade" id="pills-contact" role="tabpanel" aria-labelledby="pills-contact-tab">
+					<div id="map-canvas"></div>
+				</div>
+			</div>
+			<div class="py-2 border-bottom d-flex gap-2 align-items-center">
+				<span>
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<path fill-rule="evenodd" clip-rule="evenodd"
+							d="M12 16.5017C14.4853 16.5017 16.5 14.487 16.5 12.0017C16.5 9.5164 14.4853 7.50168 12 7.50168C9.51472 7.50168 7.5 9.5164 7.5 12.0017C7.5 14.487 9.51472 16.5017 12 16.5017ZM12 14.5034C10.6184 14.5034 9.49832 13.3833 9.49832 12.0017C9.49832 10.62 10.6184 9.5 12 9.5C13.3816 9.5 14.5017 10.62 14.5017 12.0017C14.5017 13.3833 13.3816 14.5034 12 14.5034Z"
+							fill="#0F0F0F" />
+						<path fill-rule="evenodd" clip-rule="evenodd"
+							d="M11 1C11 0.447715 11.4477 0 12 0C12.5523 0 13 0.447715 13 1V2.04938C17.7244 2.51844 21.4816 6.27558 21.9506 11H23C23.5523 11 24 11.4477 24 12C24 12.5523 23.5523 13 23 13H21.9506C21.4816 17.7244 17.7244 21.4816 13 21.9506V23C13 23.5523 12.5523 24 12 24C11.4477 24 11 23.5523 11 23V21.9506C6.27558 21.4816 2.51844 17.7244 2.04938 13H1C0.447715 13 0 12.5523 0 12C-1.19209e-07 11.4477 0.447715 11 1 11H2.04938C2.51844 6.27558 6.27558 2.51844 11 2.04938V1ZM12 20.0016C7.58083 20.0016 3.99839 16.4192 3.99839 12C3.99839 7.58083 7.58083 3.99839 12 3.99839C16.4192 3.99839 20.0016 7.58083 20.0016 12C20.0016 16.4192 16.4192 20.0016 12 20.0016Z"
+							fill="#F39C04" />
+					</svg>
+				</span>
+				<div class="">
+					<h5 class="m-0 cursor-pointer" onclick="initGeolocation()">Current Location</h5>
+				</div>
+				<div class="">
+					<h5 class="m-0 cursor-pointer mapsecclk">Set Location On Map</h5>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="mapsec" style="display:none">
+		<button class="backsec1">
+			<svg width="20" height="20" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+				<title>ionicons-v5-a</title>
+				<polyline points="244 400 100 256 244 112"
+					style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px" />
+				<line x1="120" y1="256" x2="412" y2="256"
+					style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:48px" />
+			</svg>
+		</button>
+		<div id="map-canvas"></div>
+		<iframe style="height:100vh"
+			src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d117925.21689745935!2d88.26495099497535!3d22.53556493638796!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f882db4908f667%3A0x43e330e68f6c2cbc!2sKolkata%2C%20West%20Bengal!5e0!3m2!1sen!2sin!4v1692620790752!5m2!1sen!2sin"
+			width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"
+			referrerpolicy="no-referrer-when-downgrade"></iframe>
+		<div class="p-3 bottomstky">
+			<h4>Choose your dropoff spot</h4>
+			<div class="mb-3">Bear, Satish Chakraborty Ln</div>
+			<button class="btn btn-dark w-100 mb-2">Confirm Dropoff</button>
+			<button class="btn btn-light w-100 mb-2">Cancel</button>
+		</div>
+	</div>
+
+	</div>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+
+	<script>
+		const addButton = document.getElementById("addMoreButton");
+		addButton.addEventListener("click", () => {
+			const dualsearchDiv = document.querySelector(".dualsearch");
+			const newInputGroup = document.createElement("li");
+			newInputGroup.className = "input-group mb-2 headersearch d-flex align-items-center";
+			const newInput = document.createElement("input");
+			newInput.type = "text";
+			newInput.className = "form-control w-100";
+			newInput.placeholder = "Where to?";
+			const newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+			newSvg.className = "curserdrug";
+			newSvg.setAttribute("width", "20");
+			newSvg.setAttribute("height", "20");
+			newSvg.setAttribute("viewBox", "0 0 24 24");
+			newSvg.setAttribute("fill", "none");
+			const newSvgPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+			newSvgPath.setAttribute("d", "M5 9H19M5 15H19");
+			newSvgPath.setAttribute("stroke", "#000000");
+			newSvgPath.setAttribute("stroke-width", "2");
+			newSvgPath.setAttribute("stroke-linecap", "round");
+			newSvgPath.setAttribute("stroke-linejoin", "round");
+			newSvg.appendChild(newSvgPath);
+			newInputGroup.appendChild(newInput);
+			newInputGroup.appendChild(newSvg);
+			dualsearchDiv.appendChild(newInputGroup);
+		});
+		$(init);
+		function init() {
+			$(".droppable-area1").sortable({
+				connectWith: ".connected-sortable",
+				stack: '.connected-sortable ul'
+			}).
+				disableSelection();
+		}
+		$(".mapsecclk").click(function () {
+			$(".screen1").css("display", "none");
+			$("#mapsec").css("display", "block");
+		});
+		$(".backsec1").click(function () {
+			$(".screen1").css("display", "block");
+			$("#mapsec").css("display", "none");
+		});
+
+	</script>
+
+</body>
+
+</html>
