@@ -77,6 +77,8 @@ app.get(`/place/details`, async (req, res) => {
 	const sessiontoken = req.query.token;
 
 	logger.info(`api : ${googlePlaceApis.details}, userId : ${userId}, searchedText : ${place_id}`)
+	let currentDate = new Date().toLocaleString({ timeZone: 'Asia/Kolkata' }).split(",")[0];	
+	placeApiCounter[currentDate] = (typeof placeApiCounter[currentDate] === 'undefined') ? 1 : (placeApiCounter[currentDate] + 1);
 	
 	try {
 		const response = await axios.get(
